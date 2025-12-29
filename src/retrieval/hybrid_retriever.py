@@ -132,6 +132,35 @@ class HybridRetriever:
         
         return results
     
+    def bm25_search(
+        self,
+        query: str,
+        top_k: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        Perform BM25 keyword search and return full documents.
+        
+        Args:
+            query: Query text
+            top_k: Number of results
+        
+        Returns:
+            List of document dictionaries with bm25_score
+        """
+        # Get (doc_id, score) tuples
+        keyword_results = self.keyword_search(query, top_k)
+        
+        # Fetch full documents
+        results = []
+        for doc_id, score in keyword_results:
+            if doc_id in self.doc_id_to_idx:
+                doc = self.documents[self.doc_id_to_idx[doc_id]].copy()
+                doc['bm25_score'] = score
+                results.append(doc)
+        
+        return results
+
+    
     def reciprocal_rank_fusion(
         self,
         rankings: List[List[Tuple[str, float]]],

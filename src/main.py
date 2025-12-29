@@ -23,6 +23,7 @@ from src.retrieval.query_router import QueryRouter
 from src.knowledge_graph.graph_builder import KnowledgeGraphBuilder
 from src.generation.memory_manager import MemoryManager
 from src.generation.rag_chain import RAGChain
+from src.generation.rag_orchestrator import RAGOrchestrator
 from src.utils.evaluator import AgronomistAuditor
 
 
@@ -61,8 +62,9 @@ class PrecisionAgricultureRAG:
         # Hybrid retriever (initialized after loading documents)
         self.hybrid_retriever: Optional[HybridRetriever] = None
         
-        # RAG chain
+        # RAG chain and orchestrator
         self.rag_chain: Optional[RAGChain] = None
+        self.orchestrator: Optional[RAGOrchestrator] = None
         
         if load_existing:
             self._load_existing_data()
@@ -99,6 +101,14 @@ class PrecisionAgricultureRAG:
         
         # Attach knowledge graph to retriever for context
         self.hybrid_retriever.knowledge_graph = self.knowledge_graph
+        
+        # Initialize RAG Orchestrator (ReAct-style)
+        self.orchestrator = RAGOrchestrator(
+            hybrid_retriever=self.hybrid_retriever,
+            knowledge_graph=self.knowledge_graph,
+            embedding_generator=self.embedding_generator,
+            memory_manager=self.memory
+        )
         
         logger.info("RAG system initialized and ready!")
     
@@ -200,7 +210,12 @@ class PrecisionAgricultureRAG:
         print("PRECISION AGRICULTURE WATER MANAGEMENT RAG SYSTEM")
         print("="*60)
         print("Ask questions about water management, irrigation, sensors, etc.")
-        print("Commands: /clear (clear memory), /eval (evaluate last response), /quit (exit)")
+        print("Commands:")
+        print("  /react  - Use ReAct reasoning (structured output)")
+        print("  /clear  - Clear conversation memory")
+        print("  /eval   - Evaluate last response")
+        print("  /help   - Show commands")
+        print("  /quit   - Exit")
         print("="*60 + "\n")
         
         if self.hybrid_retriever is None:
@@ -224,7 +239,24 @@ class PrecisionAgricultureRAG:
                     print("Memory cleared.\n")
                     continue
                 elif question.lower() == "/help":
-                    print("Commands: /clear, /eval, /quit, /help")
+                    print("Commands: /react, /clear, /eval, /quit, /help")
+                    print("  /react  - Use ReAct reasoning for structured output")
+                    continue
+                elif question.lower().startswith("/react"):
+                    # Extract the actual query after /react
+                    react_query = question[6:].strip()
+                    if not react_query:
+                        react_query = input("Enter your question: ").strip()
+                    if react_query and self.orchestrator:
+                        result = self.orchestrator.run(react_query)
+                        print("\n" + result.to_markdown())
+                        print(f"\nConfidence: {result.confidence:.0%}")
+                        print()
+                        self._last_documents = []
+                        self._last_query = react_query
+                        self._last_response = result.raw_answer
+                    else:
+                        print("Orchestrator not initialized or empty query.\n")
                     continue
                 elif question.lower() == "/eval":
                     if hasattr(self, '_last_documents') and self._last_documents:

@@ -25,14 +25,15 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # ========== LLM CONFIGURATION ==========
 LLM_CONFIG = {
-    "model": "qwen:1.8b",
+    "model": "llama3.2:3b",  # Upgraded from qwen:1.8b for better generation quality
     "base_url": "http://localhost:11434",
-    "temperature": 0.1,  # Low for accuracy
+    "temperature": 0.3,  # Slightly higher for more creative responses
     "top_p": 0.9,
     "top_k": 40,
     "num_ctx": 4096,  # Context window
-    "repeat_penalty": 1.1,
+    "repeat_penalty": 1.2,  # Increased to prevent repetitive outputs
     "num_predict": 512,  # Max output tokens
+    "stop": ["<|im_end|>", "\n\nQuestion:", "\n\nYou:"],  # Stop tokens
 }
 
 # ========== EMBEDDING CONFIGURATION ==========
@@ -45,13 +46,23 @@ EMBEDDING_CONFIG = {
 }
 
 # ========== DOCUMENT PROCESSING ==========
+# Semantic Chunking Configuration (Recursive Semantic Splitting)
 CHUNK_CONFIG = {
-    "chunk_size": 1000,  # characters
-    "chunk_overlap": 200,  # characters
-    "separators": ["\n\n", "\n", ". ", " ", ""],
+    "chunk_size": 600,  # Target size in characters
+    "chunk_overlap": 90,  # 15% of 600
+    "chunk_overlap_percent": 0.15,
+    "separators": ["\n\n", "\n", ". ", "; ", ", ", " "],
     "length_function": len,
     "add_start_index": True,
+    "breakpoint_threshold_percentile": 95,  # For semantic breaking
+    "similarity_drop_threshold": 0.15,  # Topic shift detection
 }
+
+# Context Injection Template
+CONTEXT_INJECTION_TEMPLATE = """[DOC_ORIGIN: {filename}]
+[SUB_SECTION: {header_path}]
+[LOCAL_SCOPE: Morocco / {region}]
+[CONTENT]: {chunk_text}"""
 
 # ========== VECTOR STORE CONFIGURATION ==========
 VECTOR_STORE_CONFIG = {

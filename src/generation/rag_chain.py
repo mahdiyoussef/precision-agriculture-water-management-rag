@@ -40,6 +40,7 @@ class RAGChain:
             top_k=LLM_CONFIG["top_k"],
             num_ctx=LLM_CONFIG["num_ctx"],
             repeat_penalty=LLM_CONFIG["repeat_penalty"],
+            stop=LLM_CONFIG.get("stop", []),  # Add stop tokens
         )
         
         # Build prompts
@@ -47,22 +48,29 @@ class RAGChain:
     
     def _build_qa_prompt(self) -> PromptTemplate:
         """Build the QA prompt template."""
-        template = """<|im_start|>system
+        # Llama 3 format with structured output instructions
+        template = """<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
 {system_prompt}
-<|im_end|>
-<|im_start|>user
+
+RESPONSE FORMAT:
+1. Start with a brief Executive Summary (2-3 sentences)
+2. Provide Detailed Findings with inline citations [Source: document_name]
+3. End with key takeaways or recommendations
+4. If information is not in the context, state: "I cannot find this in the provided documents."
+<|eot_id|><|start_header_id|>user<|end_header_id|>
+
 {conversation_history}
 
-Context from documents:
+RETRIEVED CONTEXT:
 {context}
 
+KNOWLEDGE GRAPH CONTEXT:
 {knowledge_graph_context}
 
-Question: {question}
+QUESTION: {question}
+<|eot_id|><|start_header_id|>assistant<|end_header_id|>
 
-Provide a comprehensive answer based on the context. Include source citations in [Source: document_name, page X] format.
-<|im_end|>
-<|im_start|>assistant
 """
         
         return PromptTemplate(

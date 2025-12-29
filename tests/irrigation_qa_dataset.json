@@ -1,0 +1,589 @@
+[
+    {
+        "id": 1,
+        "question": "What is irrigation engineering, and what role does it play in agriculture?",
+        "expected_answer": "Irrigation engineering refers to the study and application of engineering principles to design and manage water distribution systems. The goal is to provide adequate water to crops and plants in a controlled and efficient manner. Irrigation engineers design, develop, and maintain irrigation systems like canals, sprinklers, and drip systems, considering factors like soil type, crop type, and climate.",
+        "key_concepts": [
+            "water distribution systems",
+            "crop water delivery",
+            "canals",
+            "sprinklers",
+            "drip systems",
+            "soil type",
+            "crop type",
+            "climate"
+        ]
+    },
+    {
+        "id": 2,
+        "question": "What are the different types of irrigation systems?",
+        "expected_answer": "Surface Irrigation (furrows, basins, borders), Drip Irrigation (water delivered to root zone), Sprinkler Irrigation (simulating rainfall), Subsurface Irrigation (below soil surface), Flood Irrigation (water spread over entire surface).",
+        "key_concepts": [
+            "surface irrigation",
+            "drip irrigation",
+            "sprinkler irrigation",
+            "subsurface irrigation",
+            "flood irrigation"
+        ]
+    },
+    {
+        "id": 3,
+        "question": "How do you calculate the water requirement for crops?",
+        "expected_answer": "Water Requirement = ET x Area x Crop Factor. Key variables include: crop type, climate conditions, soil properties, and evapotranspiration (ET).",
+        "key_concepts": [
+            "evapotranspiration",
+            "crop type",
+            "climate",
+            "soil properties",
+            "water requirement formula"
+        ]
+    },
+    {
+        "id": 4,
+        "question": "What is the concept of evapotranspiration (ET) and why is it important?",
+        "expected_answer": "Evapotranspiration (ET) refers to the total amount of water lost from soil and plants due to evaporation and transpiration. It is critical for irrigation planning as it helps estimate how much water crops need.",
+        "key_concepts": [
+            "evaporation",
+            "transpiration",
+            "water loss",
+            "irrigation planning"
+        ]
+    },
+    {
+        "id": 5,
+        "question": "What are the main factors influencing irrigation design?",
+        "expected_answer": "Water Availability (quantity, quality, source), Soil Properties (permeability, texture, water retention), Crop Type, Climate (temperature, wind, humidity), Topography (slope, elevation).",
+        "key_concepts": [
+            "water availability",
+            "soil properties",
+            "crop type",
+            "climate",
+            "topography"
+        ]
+    },
+    {
+        "id": 6,
+        "question": "What is the difference between a sprinkler system and a drip irrigation system?",
+        "expected_answer": "Sprinkler systems spray water over the field through pipes and sprinklers, less efficient due to evaporation. Drip irrigation delivers water directly to root zone through small tubes, very efficient with minimal wastage.",
+        "key_concepts": [
+            "sprinkler",
+            "drip",
+            "water efficiency",
+            "evaporation",
+            "root zone"
+        ]
+    },
+    {
+        "id": 7,
+        "question": "How do you perform a water audit in an irrigation system?",
+        "expected_answer": "Steps: 1) Inspect system for leaks/clogs, 2) Measure water usage, 3) Evaluate distribution uniformity, 4) Calculate system efficiency, 5) Recommend improvements.",
+        "key_concepts": [
+            "leaks",
+            "water usage",
+            "distribution uniformity",
+            "system efficiency",
+            "audit"
+        ]
+    },
+    {
+        "id": 8,
+        "question": "What is the role of a pump station in an irrigation system?",
+        "expected_answer": "Pump stations supply water from sources (wells, rivers, reservoirs) to the irrigation system, ensuring proper water pressure and flow. Functions: Water Supply, Pressure Maintenance, Flow Control.",
+        "key_concepts": [
+            "pump station",
+            "water supply",
+            "pressure",
+            "flow control"
+        ]
+    },
+    {
+        "id": 9,
+        "question": "Can you explain what a fertigation system is and how it works?",
+        "expected_answer": "Fertigation is applying fertilizers through the irrigation system in diluted form. Benefits: Improved Nutrient Efficiency, Time and Cost Savings, Consistent Nutrient Supply.",
+        "key_concepts": [
+            "fertigation",
+            "fertilizer",
+            "nutrient efficiency",
+            "irrigation system"
+        ]
+    },
+    {
+        "id": 10,
+        "question": "What is the significance of the crop coefficient (Kc) in irrigation?",
+        "expected_answer": "The crop coefficient (Kc) adjusts potential evapotranspiration (ETp) to reflect specific crop water needs. ETc = Kc x ETp. Varies by crop type, growth stage, and climate.",
+        "key_concepts": [
+            "crop coefficient",
+            "Kc",
+            "evapotranspiration",
+            "ETp",
+            "growth stage"
+        ]
+    },
+    {
+        "id": 11,
+        "question": "How do you ensure that an irrigation system is energy-efficient?",
+        "expected_answer": "Use low-energy systems, optimize pressure, use automation and scheduling, implement variable speed pumps that adjust based on demand.",
+        "key_concepts": [
+            "energy efficiency",
+            "variable speed pumps",
+            "automation",
+            "pressure optimization"
+        ]
+    },
+    {
+        "id": 12,
+        "question": "What are the advantages and disadvantages of using surface irrigation?",
+        "expected_answer": "Advantages: Cost-effective, simple technology, suitable for certain crops. Disadvantages: Water waste, labor-intensive, uneven distribution.",
+        "key_concepts": [
+            "surface irrigation",
+            "cost-effective",
+            "water waste",
+            "labor-intensive"
+        ]
+    },
+    {
+        "id": 13,
+        "question": "How do you handle the problem of soil salinity in irrigation systems?",
+        "expected_answer": "Methods: Leaching (flush salts below root zone), Drip Irrigation (reduce salt accumulation), Water Quality Management, Crop Selection (salt-tolerant crops).",
+        "key_concepts": [
+            "soil salinity",
+            "leaching",
+            "drip irrigation",
+            "salt-tolerant crops"
+        ]
+    },
+    {
+        "id": 14,
+        "question": "What is an irrigation scheduling system, and why is it important?",
+        "expected_answer": "Irrigation scheduling determines when and how much water to apply. Key factors: Soil Moisture, Weather Conditions, Crop Stage. Helps optimize water usage and improve yields.",
+        "key_concepts": [
+            "irrigation scheduling",
+            "soil moisture",
+            "weather",
+            "crop stage"
+        ]
+    },
+    {
+        "id": 15,
+        "question": "How do you design an irrigation system for a hilly or mountainous terrain?",
+        "expected_answer": "Use gravity flow systems, create terraces, use drip irrigation for precise delivery without erosion.",
+        "key_concepts": [
+            "gravity flow",
+            "terracing",
+            "drip irrigation",
+            "erosion control",
+            "hilly terrain"
+        ]
+    },
+    {
+        "id": 16,
+        "question": "What are some common challenges faced by irrigation engineers?",
+        "expected_answer": "Water Scarcity, Climate Change, Soil Health maintenance, Budget Constraints.",
+        "key_concepts": [
+            "water scarcity",
+            "climate change",
+            "soil health",
+            "budget constraints"
+        ]
+    },
+    {
+        "id": 17,
+        "question": "How do you calculate the efficiency of an irrigation system?",
+        "expected_answer": "Efficiency (%) = (Water effectively used by crops / Total water applied) x 100",
+        "key_concepts": [
+            "efficiency",
+            "water used",
+            "total water applied",
+            "formula"
+        ]
+    },
+    {
+        "id": 18,
+        "question": "What is the importance of water quality in irrigation?",
+        "expected_answer": "Poor water quality can: Affect Plant Growth (contaminants), Clog Irrigation Systems (sediment), Cause Soil Salinity (high salt levels).",
+        "key_concepts": [
+            "water quality",
+            "contaminants",
+            "clogging",
+            "soil salinity"
+        ]
+    },
+    {
+        "id": 19,
+        "question": "What are the environmental impacts of poor irrigation practices?",
+        "expected_answer": "Water Wastage, Soil Erosion, Waterlogging, Pollution from fertilizer/pesticide runoff.",
+        "key_concepts": [
+            "water wastage",
+            "soil erosion",
+            "waterlogging",
+            "pollution",
+            "runoff"
+        ]
+    },
+    {
+        "id": 20,
+        "question": "Can you explain the concept of irrigation water management?",
+        "expected_answer": "Controlling the amount, timing, and distribution of water to crops. Involves: Monitoring Soil Moisture, Optimizing Irrigation Scheduling, Adopting Efficient Techniques.",
+        "key_concepts": [
+            "water management",
+            "soil moisture",
+            "scheduling",
+            "distribution",
+            "efficiency"
+        ]
+    },
+    {
+        "id": 21,
+        "question": "What are the advantages and disadvantages of using drip irrigation?",
+        "expected_answer": "Advantages: Water and fertilizer efficiency, reduced soil erosion, ideal for sloped land. Disadvantages: High initial costs, clogging risk, labor-intensive maintenance.",
+        "key_concepts": [
+            "drip irrigation",
+            "water efficiency",
+            "clogging",
+            "initial costs",
+            "maintenance"
+        ]
+    },
+    {
+        "id": 22,
+        "question": "What are the key considerations for designing a water-efficient irrigation system?",
+        "expected_answer": "System Type selection, Water Source reliability, Soil Moisture Monitoring, Scheduling and Automation, System Maintenance planning.",
+        "key_concepts": [
+            "system type",
+            "water source",
+            "soil moisture",
+            "automation",
+            "maintenance"
+        ]
+    },
+    {
+        "id": 23,
+        "question": "How does the climate affect irrigation planning?",
+        "expected_answer": "Temperature (higher = more irrigation), Rainfall (more = less irrigation needed), Wind (increases evaporation), Humidity (drier = more water needed).",
+        "key_concepts": [
+            "temperature",
+            "rainfall",
+            "wind",
+            "humidity",
+            "evaporation"
+        ]
+    },
+    {
+        "id": 24,
+        "question": "What is the role of an irrigation engineer in water conservation?",
+        "expected_answer": "Designing Efficient Systems, Optimizing Water Usage, Recycling and Reusing Water, Training Farmers on efficient practices.",
+        "key_concepts": [
+            "water conservation",
+            "efficient systems",
+            "water reuse",
+            "farmer training"
+        ]
+    },
+    {
+        "id": 25,
+        "question": "How do you handle water shortages in irrigation?",
+        "expected_answer": "Prioritize Critical Crops, Use Efficient Systems (drip), Rainwater Harvesting, Water Recycling, Scheduling Adjustments based on soil moisture.",
+        "key_concepts": [
+            "water shortage",
+            "crop prioritization",
+            "rainwater harvesting",
+            "water recycling"
+        ]
+    },
+    {
+        "id": 26,
+        "question": "What factors influence the selection of an irrigation system for a specific farm?",
+        "expected_answer": "Soil Type, Topography, Crop Type, Water Availability, Budget.",
+        "key_concepts": [
+            "soil type",
+            "topography",
+            "crop type",
+            "water availability",
+            "budget"
+        ]
+    },
+    {
+        "id": 27,
+        "question": "Can you explain the concept of hydraulic efficiency in an irrigation system?",
+        "expected_answer": "How well the system uses water while minimizing losses. Considers: Water Distribution uniformity, Pressure Regulation, Piping and Valves.",
+        "key_concepts": [
+            "hydraulic efficiency",
+            "water distribution",
+            "pressure regulation",
+            "piping"
+        ]
+    },
+    {
+        "id": 28,
+        "question": "What are the methods for reducing water wastage in irrigation?",
+        "expected_answer": "Use Drip Irrigation, Rainwater Harvesting, Efficient Scheduling (morning/evening), Soil Moisture Sensors, Use of Mulch.",
+        "key_concepts": [
+            "drip irrigation",
+            "rainwater harvesting",
+            "scheduling",
+            "soil moisture sensors",
+            "mulch"
+        ]
+    },
+    {
+        "id": 29,
+        "question": "How do you assess the performance of an irrigation system?",
+        "expected_answer": "Evaluate: Water Distribution Uniformity, System Efficiency, Energy Efficiency, System Maintenance issues, Crop Yield comparison.",
+        "key_concepts": [
+            "distribution uniformity",
+            "system efficiency",
+            "energy efficiency",
+            "maintenance",
+            "crop yield"
+        ]
+    },
+    {
+        "id": 30,
+        "question": "What are some common causes of clogging in drip irrigation systems?",
+        "expected_answer": "Poor Water Quality, Chemical Imbalance (pH, minerals), Improper Filtration, Biological Growth (bacteria, fungi).",
+        "key_concepts": [
+            "clogging",
+            "water quality",
+            "pH",
+            "filtration",
+            "biological growth"
+        ]
+    },
+    {
+        "id": 31,
+        "question": "How do you ensure sustainability in irrigation practices?",
+        "expected_answer": "Water Conservation, Renewable Energy use, Soil Health Management, Continuous Monitoring, Water Recycling.",
+        "key_concepts": [
+            "sustainability",
+            "water conservation",
+            "renewable energy",
+            "soil health",
+            "water recycling"
+        ]
+    },
+    {
+        "id": 32,
+        "question": "What is a gated pipe system in irrigation?",
+        "expected_answer": "Uses large pipes with spaced gates/holes to distribute water evenly. Common in surface irrigation for crops like rice. Easy to install but can have water wastage in hot climates.",
+        "key_concepts": [
+            "gated pipe",
+            "surface irrigation",
+            "rice",
+            "water distribution"
+        ]
+    },
+    {
+        "id": 33,
+        "question": "How can the efficiency of an irrigation pump be improved?",
+        "expected_answer": "Proper Pump Selection, Variable Speed Pumps, Prevent Cavitation, Regular Maintenance, Reduce Pumping Head.",
+        "key_concepts": [
+            "pump efficiency",
+            "variable speed",
+            "cavitation",
+            "maintenance",
+            "pumping head"
+        ]
+    },
+    {
+        "id": 34,
+        "question": "What is scheduling irrigation based on weather forecasts, and why is it important?",
+        "expected_answer": "Adjusting irrigation based on upcoming weather. Benefits: Avoid Over-Irrigation (if rain expected), Prevent Under-Irrigation (if hot weather), Save Water.",
+        "key_concepts": [
+            "weather forecasts",
+            "over-irrigation",
+            "under-irrigation",
+            "water savings"
+        ]
+    },
+    {
+        "id": 35,
+        "question": "How do you calculate the irrigation efficiency of a drip system?",
+        "expected_answer": "Efficiency (%) = (Water applied to crop / Total water used by system) x 100",
+        "key_concepts": [
+            "drip efficiency",
+            "water applied",
+            "total water",
+            "formula"
+        ]
+    },
+    {
+        "id": 36,
+        "question": "What is the importance of soil permeability in irrigation?",
+        "expected_answer": "Fast-draining soils (sandy) need frequent, lighter irrigation. Slow-draining soils (clay) retain water longer, need less frequent irrigation.",
+        "key_concepts": [
+            "soil permeability",
+            "sandy soil",
+            "clay soil",
+            "irrigation frequency"
+        ]
+    },
+    {
+        "id": 37,
+        "question": "What is the role of a filtration system in an irrigation network?",
+        "expected_answer": "Removes particles, debris, contaminants. Prevents: Clogging, Water Damage, ensures Improved Efficiency. Types: sand, disk, screen filters.",
+        "key_concepts": [
+            "filtration",
+            "clogging prevention",
+            "water quality",
+            "sand filter",
+            "disk filter"
+        ]
+    },
+    {
+        "id": 38,
+        "question": "How do you calculate the flow rate of an irrigation system?",
+        "expected_answer": "Flow Rate = Volume / Time. Measured in liters per minute (LPM) or gallons per minute (GPM).",
+        "key_concepts": [
+            "flow rate",
+            "volume",
+            "time",
+            "LPM",
+            "GPM"
+        ]
+    },
+    {
+        "id": 39,
+        "question": "What are the main challenges in drip irrigation installation?",
+        "expected_answer": "High Initial Cost, System Complexity, Clogging risk, Regular Maintenance requirements.",
+        "key_concepts": [
+            "drip installation",
+            "initial cost",
+            "complexity",
+            "clogging",
+            "maintenance"
+        ]
+    },
+    {
+        "id": 40,
+        "question": "How can irrigation engineers help in drought-prone areas?",
+        "expected_answer": "Design Water-Efficient Systems, Use Alternative Water Sources (rainwater, wastewater), Optimize Water Usage with sensors, Educate Farmers.",
+        "key_concepts": [
+            "drought",
+            "water-efficient systems",
+            "rainwater",
+            "sensors",
+            "farmer education"
+        ]
+    },
+    {
+        "id": 41,
+        "question": "What is the significance of irrigation scheduling in agriculture?",
+        "expected_answer": "Water Conservation, Improved Crop Yield, Cost Savings, Soil Health protection.",
+        "key_concepts": [
+            "irrigation scheduling",
+            "water conservation",
+            "crop yield",
+            "cost savings",
+            "soil health"
+        ]
+    },
+    {
+        "id": 42,
+        "question": "How do you determine the water requirements for different crops?",
+        "expected_answer": "Consider: Crop Type, Climate/Weather, Soil Type/Permeability, Evapotranspiration (ET), Growth Stage.",
+        "key_concepts": [
+            "water requirements",
+            "crop type",
+            "climate",
+            "soil",
+            "evapotranspiration",
+            "growth stage"
+        ]
+    },
+    {
+        "id": 43,
+        "question": "What is the role of a check valve in an irrigation system?",
+        "expected_answer": "Prevents backflow, ensures water flows one direction. Benefits: Prevention of Water Loss, Prevention of Contamination, Pressure Regulation.",
+        "key_concepts": [
+            "check valve",
+            "backflow",
+            "contamination prevention",
+            "pressure regulation"
+        ]
+    },
+    {
+        "id": 44,
+        "question": "What are some common mistakes to avoid in designing an irrigation system?",
+        "expected_answer": "Improper Water Source Assessment, Incorrect Sizing of Pipes/Pumps, Ignoring Soil/Crop Requirements, Lack of Maintenance Planning, Over/Under-Designing.",
+        "key_concepts": [
+            "design mistakes",
+            "water source",
+            "pipe sizing",
+            "soil requirements",
+            "maintenance planning"
+        ]
+    },
+    {
+        "id": 45,
+        "question": "Can you explain the concept of deep percolation in irrigation?",
+        "expected_answer": "Downward movement of water beyond root zone when irrigation exceeds soil water-holding capacity. Leads to Nutrient Leaching and Water Waste.",
+        "key_concepts": [
+            "deep percolation",
+            "root zone",
+            "nutrient leaching",
+            "water waste"
+        ]
+    },
+    {
+        "id": 46,
+        "question": "What are the best practices for maintaining a healthy irrigation system?",
+        "expected_answer": "Regular Inspections, Cleaning Filters/Emitters, Check Pressure, Monitor Water Quality, Winterize the System.",
+        "key_concepts": [
+            "maintenance",
+            "inspections",
+            "filter cleaning",
+            "pressure",
+            "water quality",
+            "winterization"
+        ]
+    },
+    {
+        "id": 47,
+        "question": "How do you handle irrigation in regions with fluctuating water quality?",
+        "expected_answer": "Use Filtration Systems, Water Treatment, Regular Monitoring, Emphasize Maintenance.",
+        "key_concepts": [
+            "water quality",
+            "filtration",
+            "water treatment",
+            "monitoring",
+            "maintenance"
+        ]
+    },
+    {
+        "id": 48,
+        "question": "What is the difference between surface irrigation and subsurface irrigation?",
+        "expected_answer": "Surface: Water applied to soil surface, flows by gravity. Low cost, simple. Subsurface: Water delivered underground to root zone. More water-efficient, less weed growth.",
+        "key_concepts": [
+            "surface irrigation",
+            "subsurface irrigation",
+            "gravity",
+            "root zone",
+            "water efficiency"
+        ]
+    },
+    {
+        "id": 49,
+        "question": "How do you calculate the infiltration rate of soil?",
+        "expected_answer": "Infiltration Rate = Volume of Water / Time Taken to Percolate. Measured in inches/hour or mm/hour.",
+        "key_concepts": [
+            "infiltration rate",
+            "soil",
+            "volume",
+            "time",
+            "percolation"
+        ]
+    },
+    {
+        "id": 50,
+        "question": "What advancements in irrigation technology are you most excited about?",
+        "expected_answer": "Smart Irrigation Systems (sensors, automation), Drip with Nanotechnology, Drought-Tolerant Crops, Solar-Powered Irrigation, Real-Time IoT Monitoring.",
+        "key_concepts": [
+            "smart irrigation",
+            "sensors",
+            "nanotechnology",
+            "solar power",
+            "IoT",
+            "automation"
+        ]
+    }
+]

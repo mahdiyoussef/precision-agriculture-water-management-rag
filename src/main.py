@@ -19,9 +19,11 @@ from src.embeddings.vector_store import VectorStore
 from src.retrieval.hybrid_retriever import HybridRetriever
 from src.retrieval.query_enhancer import QueryEnhancer
 from src.retrieval.reranker import Reranker
+from src.retrieval.query_router import QueryRouter
 from src.knowledge_graph.graph_builder import KnowledgeGraphBuilder
 from src.generation.memory_manager import MemoryManager
 from src.generation.rag_chain import RAGChain
+from src.utils.evaluator import AgronomistAuditor
 
 
 class PrecisionAgricultureRAG:
@@ -52,7 +54,9 @@ class PrecisionAgricultureRAG:
         self.knowledge_graph = KnowledgeGraphBuilder()
         self.query_enhancer = QueryEnhancer()
         self.reranker = Reranker()
+        self.query_router = QueryRouter()  # Smart query routing
         self.memory = MemoryManager()
+        self.auditor = None  # Lazy-loaded evaluator
         
         # Hybrid retriever (initialized after loading documents)
         self.hybrid_retriever: Optional[HybridRetriever] = None
@@ -128,16 +132,27 @@ class PrecisionAgricultureRAG:
         
         logger.info(f"Processing query: {question[:50]}...")
         
+        # Smart query routing - get optimal strategy based on intent
+        strategy, intent, routing_confidence = self.query_router.get_strategy(question)
+        
+        # Adjust parameters based on strategy
+        effective_top_k = strategy.top_k if strategy.top_k else top_k
+        use_query_enhancement = use_query_enhancement and strategy.use_query_expansion
+        use_kg_context = use_kg_context and strategy.use_graph
+        
+        logger.info(f"Query intent: {intent.value}, routing confidence: {routing_confidence:.2f}")
+        
         # Query enhancement
         all_queries = [question]
         if use_query_enhancement:
             all_queries = self.query_enhancer.get_all_queries(question)
             logger.info(f"Generated {len(all_queries)} query variations")
+
         
         # Retrieve documents using all query variations
         all_docs = {}
         for q in all_queries:
-            docs = self.hybrid_retriever.retrieve(q, top_k=top_k * 2)
+            docs = self.hybrid_retriever.retrieve(q, top_k=effective_top_k * 2)
             for doc in docs:
                 doc_id = doc.get("id", doc.get("chunk_id"))
                 if doc_id not in all_docs:
@@ -152,14 +167,14 @@ class PrecisionAgricultureRAG:
             all_docs.values(),
             key=lambda x: x.get("retrieval_score", 0),
             reverse=True
-        )[:top_k * 2]  # Keep more for reranking
+        )[:effective_top_k * 2]  # Keep more for reranking
         
         # Reranking
         if use_reranking and documents:
-            documents = self.reranker.rerank(question, documents, top_k=top_k)
+            documents = self.reranker.rerank(question, documents, top_k=effective_top_k)
             logger.info(f"Reranked to {len(documents)} documents")
         else:
-            documents = documents[:top_k]
+            documents = documents[:effective_top_k]
         
         # Get knowledge graph context
         kg_context = ""
@@ -173,6 +188,9 @@ class PrecisionAgricultureRAG:
             knowledge_graph_context=kg_context,
             use_memory=True
         )
+        # Store last retrieved docs for evaluation
+        self._last_documents = documents
+        self._last_query = question
         
         return response
     
@@ -182,7 +200,7 @@ class PrecisionAgricultureRAG:
         print("PRECISION AGRICULTURE WATER MANAGEMENT RAG SYSTEM")
         print("="*60)
         print("Ask questions about water management, irrigation, sensors, etc.")
-        print("Commands: /clear (clear memory), /quit (exit)")
+        print("Commands: /clear (clear memory), /eval (evaluate last response), /quit (exit)")
         print("="*60 + "\n")
         
         if self.hybrid_retriever is None:
@@ -206,7 +224,22 @@ class PrecisionAgricultureRAG:
                     print("Memory cleared.\n")
                     continue
                 elif question.lower() == "/help":
-                    print("Commands: /clear, /quit, /help")
+                    print("Commands: /clear, /eval, /quit, /help")
+                    continue
+                elif question.lower() == "/eval":
+                    if hasattr(self, '_last_documents') and self._last_documents:
+                        if self.auditor is None:
+                            self.auditor = AgronomistAuditor()
+                        result = self.auditor.evaluate(
+                            self._last_query,
+                            self._last_documents,
+                            self._last_response
+                        )
+                        print("\n=== EVALUATION RESULT ===")
+                        print(result.to_json())
+                        print()
+                    else:
+                        print("No previous response to evaluate. Ask a question first.\n")
                     continue
                 
                 # Query the system
@@ -219,6 +252,9 @@ class PrecisionAgricultureRAG:
                 
                 print(f"Confidence: {response['confidence']:.0%}")
                 print()
+                
+                # Store for evaluation
+                self._last_response = response['answer']
                 
             except KeyboardInterrupt:
                 print("\nGoodbye!")

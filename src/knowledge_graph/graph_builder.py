@@ -434,6 +434,291 @@ class KnowledgeGraphBuilder:
         
         logger.info(f"Loaded knowledge graph: {self.graph.number_of_nodes()} nodes, {self.graph.number_of_edges()} edges")
     
+    # ========================================================================
+    # Graph Traversal Methods for Agentic GraphRAG
+    # ========================================================================
+    
+    def bfs_traverse(
+        self,
+        start_entity: str,
+        max_depth: int = 2,
+        max_nodes: int = 20
+    ) -> Dict[str, Any]:
+        """
+        Breadth-first traversal from a starting entity.
+        Used for relational multi-hop reasoning in GraphRAG.
+        
+        Args:
+            start_entity: Starting entity for traversal
+            max_depth: Maximum traversal depth (hops)
+            max_nodes: Maximum nodes to return
+            
+        Returns:
+            Dictionary with traversal results and path information
+        """
+        start_entity = start_entity.lower()
+        
+        if start_entity not in self.graph:
+            # Try partial match
+            matches = [n for n in self.graph.nodes() if start_entity in n or n in start_entity]
+            if matches:
+                start_entity = matches[0]
+            else:
+                return {"found": False, "entity": start_entity, "nodes": [], "paths": []}
+        
+        visited = {start_entity: 0}  # node -> depth
+        queue = [(start_entity, 0, [start_entity])]  # (node, depth, path)
+        result_nodes = [start_entity]
+        paths = []
+        
+        while queue and len(result_nodes) < max_nodes:
+            current, depth, path = queue.pop(0)
+            
+            if depth >= max_depth:
+                continue
+            
+            # Get neighbors (both directions for multi-hop)
+            neighbors = set(self.graph.successors(current)) | set(self.graph.predecessors(current))
+            
+            for neighbor in neighbors:
+                if neighbor not in visited:
+                    visited[neighbor] = depth + 1
+                    new_path = path + [neighbor]
+                    queue.append((neighbor, depth + 1, new_path))
+                    result_nodes.append(neighbor)
+                    paths.append({
+                        "path": new_path,
+                        "length": len(new_path) - 1,
+                        "end_entity": neighbor,
+                        "end_type": self.graph.nodes[neighbor].get("type", "unknown")
+                    })
+                    
+                    if len(result_nodes) >= max_nodes:
+                        break
+        
+        # Get node details
+        nodes_with_data = []
+        for node in result_nodes:
+            node_data = self.graph.nodes[node]
+            nodes_with_data.append({
+                "entity": node,
+                "type": node_data.get("type", "unknown"),
+                "depth": visited[node],
+                "frequency": node_data.get("frequency", 0)
+            })
+        
+        return {
+            "found": True,
+            "start_entity": start_entity,
+            "nodes": nodes_with_data,
+            "paths": paths[:10],  # Top 10 paths
+            "total_discovered": len(result_nodes)
+        }
+    
+    def pagerank_entities(
+        self,
+        top_k: int = 20,
+        damping: float = 0.85
+    ) -> List[Dict[str, Any]]:
+        """
+        Calculate PageRank scores for entities in the knowledge graph.
+        Higher scores indicate more important/central entities.
+        
+        Args:
+            top_k: Number of top entities to return
+            damping: PageRank damping factor
+            
+        Returns:
+            List of entities with PageRank scores
+        """
+        if self.graph.number_of_nodes() == 0:
+            return []
+        
+        try:
+            # Calculate PageRank
+            pagerank_scores = nx.pagerank(self.graph, alpha=damping)
+            
+            # Sort by score
+            sorted_entities = sorted(
+                pagerank_scores.items(),
+                key=lambda x: x[1],
+                reverse=True
+            )[:top_k]
+            
+            # Add node metadata
+            result = []
+            for entity, score in sorted_entities:
+                node_data = self.graph.nodes.get(entity, {})
+                result.append({
+                    "entity": entity,
+                    "pagerank": round(score, 6),
+                    "type": node_data.get("type", "unknown"),
+                    "frequency": node_data.get("frequency", 0),
+                    "connections": self.graph.degree(entity)
+                })
+            
+            return result
+        except Exception as e:
+            logger.warning(f"PageRank calculation failed: {e}")
+            return []
+    
+    def get_shortest_path(
+        self,
+        entity_a: str,
+        entity_b: str
+    ) -> Dict[str, Any]:
+        """
+        Find shortest path between two entities.
+        Used for Step Efficiency metric in agentic evaluation.
+        
+        Args:
+            entity_a: Source entity
+            entity_b: Target entity
+            
+        Returns:
+            Dictionary with path information
+        """
+        entity_a = entity_a.lower()
+        entity_b = entity_b.lower()
+        
+        # Find matching nodes
+        def find_node(entity: str) -> Optional[str]:
+            if entity in self.graph:
+                return entity
+            matches = [n for n in self.graph.nodes() if entity in n or n in entity]
+            return matches[0] if matches else None
+        
+        node_a = find_node(entity_a)
+        node_b = find_node(entity_b)
+        
+        if node_a is None or node_b is None:
+            return {
+                "found": False,
+                "source": entity_a,
+                "target": entity_b,
+                "path": [],
+                "length": -1
+            }
+        
+        try:
+            # Convert to undirected for shortest path
+            undirected = self.graph.to_undirected()
+            path = nx.shortest_path(undirected, node_a, node_b)
+            
+            # Get path with edge details
+            path_with_edges = []
+            for i in range(len(path) - 1):
+                edge_data = self.graph.get_edge_data(path[i], path[i+1])
+                if edge_data is None:
+                    edge_data = self.graph.get_edge_data(path[i+1], path[i])
+                
+                relation = "related_to"
+                if edge_data:
+                    # MultiDiGraph returns dict of dicts
+                    for key, data in edge_data.items():
+                        relation = data.get("relation", "related_to")
+                        break
+                
+                path_with_edges.append({
+                    "from": path[i],
+                    "to": path[i+1],
+                    "relation": relation
+                })
+            
+            return {
+                "found": True,
+                "source": node_a,
+                "target": node_b,
+                "path": path,
+                "path_edges": path_with_edges,
+                "length": len(path) - 1
+            }
+        except nx.NetworkXNoPath:
+            return {
+                "found": False,
+                "source": node_a,
+                "target": node_b,
+                "path": [],
+                "length": -1,
+                "reason": "No path exists"
+            }
+        except Exception as e:
+            logger.warning(f"Shortest path failed: {e}")
+            return {
+                "found": False,
+                "source": entity_a,
+                "target": entity_b,
+                "path": [],
+                "length": -1,
+                "reason": str(e)
+            }
+    
+    def multi_hop_query(
+        self,
+        entities: List[str],
+        max_depth: int = 2
+    ) -> Dict[str, Any]:
+        """
+        Perform multi-hop reasoning across multiple entities.
+        Finds common connections and paths between entities.
+        
+        Args:
+            entities: List of entities to connect
+            max_depth: Maximum traversal depth
+            
+        Returns:
+            Dictionary with multi-hop reasoning results
+        """
+        if len(entities) < 2:
+            return {"error": "Need at least 2 entities for multi-hop query"}
+        
+        # Find all shortest paths between entity pairs
+        connections = []
+        common_entities = set()
+        
+        for i, e1 in enumerate(entities):
+            for e2 in entities[i+1:]:
+                path_result = self.get_shortest_path(e1, e2)
+                if path_result["found"]:
+                    connections.append({
+                        "between": [e1, e2],
+                        "path": path_result["path"],
+                        "length": path_result["length"]
+                    })
+                    # Track intermediate nodes
+                    if len(path_result["path"]) > 2:
+                        common_entities.update(path_result["path"][1:-1])
+        
+        # Get BFS traversals from each entity
+        traversals = {}
+        for entity in entities[:3]:  # Limit to avoid explosion
+            traversal = self.bfs_traverse(entity, max_depth=max_depth, max_nodes=10)
+            if traversal["found"]:
+                traversals[entity] = traversal["nodes"]
+        
+        # Find entities appearing in multiple traversals
+        entity_appearances = defaultdict(int)
+        for entity, nodes in traversals.items():
+            for node in nodes:
+                if node["entity"] != entity:
+                    entity_appearances[node["entity"]] += 1
+        
+        hub_entities = [
+            {"entity": e, "appearances": count}
+            for e, count in sorted(entity_appearances.items(), key=lambda x: -x[1])
+            if count > 1
+        ][:5]
+        
+        return {
+            "input_entities": entities,
+            "connections": connections,
+            "common_intermediate": list(common_entities),
+            "hub_entities": hub_entities,
+            "traversal_summaries": {
+                e: len(nodes) for e, nodes in traversals.items()
+            }
+        }
+    
     def get_statistics(self) -> Dict[str, Any]:
         """Get knowledge graph statistics."""
         type_counts = defaultdict(int)

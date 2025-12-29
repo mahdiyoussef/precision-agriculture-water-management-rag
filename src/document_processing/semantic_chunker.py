@@ -257,6 +257,458 @@ class SemanticChunk:
 
 
 # ============================================================================
+# Chunking Evaluation Metrics (MoC - Mixture of Chunking Learners)
+# ============================================================================
+
+@dataclass
+class ChunkingMetrics:
+    """
+    Mathematical evaluation metrics for semantic chunking quality.
+    Implements Semantic Similarity Change Point Detection methodology.
+    """
+    # Boundary Clarity: gradient of cosine similarity (∇sim)
+    boundary_clarity: float = 0.0
+    
+    # Chunk Stickiness: σ²_inter / σ²_intra (higher is better)
+    stickiness: float = 0.0
+    intra_chunk_variance: float = 0.0
+    inter_chunk_variance: float = 0.0
+    
+    # Information Density: Contextual Information Gain
+    cig_score: float = 0.0  # Non-redundancy measure
+    entropy: float = 0.0
+    
+    # Change Point Detection stats
+    num_boundaries_detected: int = 0
+    avg_similarity: float = 0.0
+    similarity_stddev: float = 0.0
+    
+    # Per-chunk scores
+    chunk_scores: List[Dict[str, float]] = field(default_factory=list)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+    
+    def summary(self) -> str:
+        """Return human-readable summary."""
+        return (
+            f"Boundary Clarity: {self.boundary_clarity:.3f} | "
+            f"Stickiness: {self.stickiness:.3f} | "
+            f"CIG: {self.cig_score:.3f}"
+        )
+
+
+class ChunkingEvaluator:
+    """
+    Evaluator for semantic chunking quality using mathematical metrics.
+    
+    Implements:
+    1. Boundary Clarity - Gradient of cosine similarity between S_i and S_{i+1}
+    2. Chunk Stickiness - Intra-chunk vs inter-chunk semantic variance
+    3. Information Density (CIG) - Contextual Information Gain for non-redundancy
+    4. Sliding Window Change Point Detection (W=3, σ threshold)
+    
+    Formula Reference:
+    - Boundary trigger: Similarity < μ - (k × σ), where k ∈ [1.5, 2.0]
+    - Stickiness = σ²_inter / σ²_intra (higher = better chunk cohesion)
+    - CIG(chunk) = H(chunk) - Σ MI(chunk, other_chunks)
+    """
+    
+    def __init__(
+        self, 
+        embedding_model: SentenceTransformer = None,
+        window_size: int = 3,
+        k_threshold: float = 1.5
+    ):
+        """
+        Initialize the chunking evaluator.
+        
+        Args:
+            embedding_model: Pre-loaded sentence transformer model
+            window_size: Sliding window size for change point detection (W=3 default)
+            k_threshold: Standard deviation multiplier for boundary detection
+        """
+        if embedding_model is None:
+            embedding_model = SentenceTransformer(
+                EMBEDDING_CONFIG["model_name"], 
+                device=DEVICE
+            )
+        self.embedding_model = embedding_model
+        self.window_size = window_size
+        self.k_threshold = k_threshold
+    
+    def evaluate_chunks(
+        self, 
+        chunks: List[Dict[str, Any]],
+        return_detailed: bool = False
+    ) -> ChunkingMetrics:
+        """
+        Evaluate chunking quality using mathematical metrics.
+        
+        Args:
+            chunks: List of chunk dictionaries with 'text' and 'sentences' keys
+            return_detailed: Include per-chunk detailed scores
+            
+        Returns:
+            ChunkingMetrics with all evaluation scores
+        """
+        if not chunks:
+            return ChunkingMetrics()
+        
+        metrics = ChunkingMetrics()
+        
+        # Collect all texts and embeddings
+        chunk_texts = [c.get("text", c.get("content", "")) for c in chunks]
+        chunk_embeddings = self.embedding_model.encode(
+            chunk_texts, 
+            show_progress_bar=False
+        )
+        
+        # 1. Calculate Boundary Clarity
+        metrics.boundary_clarity = self._calculate_boundary_clarity(
+            chunks, chunk_embeddings
+        )
+        
+        # 2. Calculate Chunk Stickiness
+        intra_var, inter_var, stickiness = self._calculate_stickiness(
+            chunks, chunk_embeddings
+        )
+        metrics.intra_chunk_variance = intra_var
+        metrics.inter_chunk_variance = inter_var
+        metrics.stickiness = stickiness
+        
+        # 3. Calculate Contextual Information Gain (CIG)
+        metrics.cig_score, metrics.entropy = self._calculate_cig(
+            chunk_texts, chunk_embeddings
+        )
+        
+        # 4. Sliding window change point detection stats
+        all_similarities = self._get_all_similarities(chunks)
+        if len(all_similarities) > 0:
+            metrics.avg_similarity = float(np.mean(all_similarities))
+            metrics.similarity_stddev = float(np.std(all_similarities))
+            
+            # Count boundaries detected using μ - k×σ threshold
+            threshold = metrics.avg_similarity - (self.k_threshold * metrics.similarity_stddev)
+            metrics.num_boundaries_detected = int(np.sum(all_similarities < threshold))
+        
+        # Per-chunk detailed scores
+        if return_detailed:
+            metrics.chunk_scores = self._calculate_per_chunk_scores(
+                chunks, chunk_embeddings
+            )
+        
+        return metrics
+    
+    def _calculate_boundary_clarity(
+        self, 
+        chunks: List[Dict[str, Any]],
+        chunk_embeddings: np.ndarray
+    ) -> float:
+        """
+        Calculate boundary clarity using gradient of cosine similarity.
+        
+        ∇sim(i) = sim(S_i, S_{i+1}) - sim(S_{i-1}, S_i)
+        High negative gradient = strong boundary (good)
+        
+        Returns:
+            Normalized boundary clarity score [0, 1]
+        """
+        if len(chunk_embeddings) < 2:
+            return 1.0
+        
+        # Calculate inter-chunk similarities
+        inter_similarities = []
+        for i in range(len(chunk_embeddings) - 1):
+            sim = self._cosine_similarity(
+                chunk_embeddings[i], 
+                chunk_embeddings[i + 1]
+            )
+            inter_similarities.append(sim)
+        
+        if not inter_similarities:
+            return 1.0
+        
+        # Calculate gradients (∇sim)
+        gradients = []
+        for i in range(1, len(inter_similarities)):
+            gradient = inter_similarities[i] - inter_similarities[i - 1]
+            gradients.append(gradient)
+        
+        if not gradients:
+            # Only one boundary, use raw dissimilarity
+            return 1.0 - np.mean(inter_similarities)
+        
+        # Negative gradients indicate clear boundaries
+        # Normalize: more negative gradients = higher clarity
+        avg_gradient = np.mean(gradients)
+        
+        # Convert to [0, 1] scale where 1 = clearest boundaries
+        # A negative average gradient is good (shows drops at boundaries)
+        clarity = 0.5 - avg_gradient  # Center at 0.5, boost for negative gradients
+        return float(np.clip(clarity, 0, 1))
+    
+    def _calculate_stickiness(
+        self, 
+        chunks: List[Dict[str, Any]],
+        chunk_embeddings: np.ndarray
+    ) -> Tuple[float, float, float]:
+        """
+        Calculate chunk stickiness (intra vs inter variance).
+        
+        σ²_intra = Average variance within chunks (should be low)
+        σ²_inter = Variance across chunk boundaries (should be high)
+        Stickiness = σ²_inter / σ²_intra (higher = better)
+        
+        Returns:
+            Tuple of (intra_variance, inter_variance, stickiness_ratio)
+        """
+        intra_variances = []
+        inter_similarities = []
+        
+        # Calculate intra-chunk variance
+        for chunk in chunks:
+            sentences = chunk.get("sentences", [])
+            if len(sentences) < 2:
+                continue
+            
+            # Get sentence embeddings within chunk
+            try:
+                sent_embeddings = self.embedding_model.encode(
+                    sentences, 
+                    show_progress_bar=False
+                )
+                
+                # Calculate pairwise similarities within chunk
+                sims = []
+                for i in range(len(sent_embeddings)):
+                    for j in range(i + 1, len(sent_embeddings)):
+                        sim = self._cosine_similarity(
+                            sent_embeddings[i], 
+                            sent_embeddings[j]
+                        )
+                        sims.append(sim)
+                
+                if sims:
+                    intra_variances.append(np.var(sims))
+            except Exception:
+                continue
+        
+        # Calculate inter-chunk similarities
+        for i in range(len(chunk_embeddings) - 1):
+            sim = self._cosine_similarity(
+                chunk_embeddings[i], 
+                chunk_embeddings[i + 1]
+            )
+            inter_similarities.append(sim)
+        
+        # Compute final metrics
+        intra_var = float(np.mean(intra_variances)) if intra_variances else 0.0
+        inter_var = float(np.var(inter_similarities)) if inter_similarities else 0.0
+        
+        # Stickiness ratio (avoid division by zero)
+        stickiness = inter_var / (intra_var + 1e-8)
+        
+        return intra_var, inter_var, float(stickiness)
+    
+    def _calculate_cig(
+        self, 
+        chunk_texts: List[str],
+        chunk_embeddings: np.ndarray
+    ) -> Tuple[float, float]:
+        """
+        Calculate Contextual Information Gain (CIG).
+        
+        CIG(chunk) = H(chunk) - Σ MI(chunk, other_chunks)
+        
+        Measures non-redundant entropy - each chunk should contain
+        unique information not present in other chunks.
+        
+        Returns:
+            Tuple of (cig_score, total_entropy)
+        """
+        if len(chunk_texts) < 2:
+            return 1.0, 1.0
+        
+        # Estimate entropy via text length and vocabulary diversity
+        entropies = []
+        for text in chunk_texts:
+            words = text.lower().split()
+            if not words:
+                entropies.append(0)
+                continue
+            
+            # Vocabulary diversity as entropy proxy
+            unique_ratio = len(set(words)) / len(words)
+            # Length contribution (longer = more information)
+            length_factor = min(1.0, len(words) / 200)
+            
+            entropy = unique_ratio * length_factor
+            entropies.append(entropy)
+        
+        total_entropy = float(np.mean(entropies))
+        
+        # Calculate mutual information via embedding similarity
+        # High similarity = high MI = redundancy (bad)
+        mi_values = []
+        for i in range(len(chunk_embeddings)):
+            chunk_mi = []
+            for j in range(len(chunk_embeddings)):
+                if i != j:
+                    sim = self._cosine_similarity(
+                        chunk_embeddings[i], 
+                        chunk_embeddings[j]
+                    )
+                    # Higher similarity = higher mutual information
+                    chunk_mi.append(max(0, sim))
+            if chunk_mi:
+                mi_values.append(np.mean(chunk_mi))
+        
+        avg_mi = float(np.mean(mi_values)) if mi_values else 0
+        
+        # CIG = Entropy - Mutual Information (normalized to [0, 1])
+        cig = total_entropy * (1 - avg_mi)
+        
+        return float(np.clip(cig, 0, 1)), total_entropy
+    
+    def _get_all_similarities(
+        self, 
+        chunks: List[Dict[str, Any]]
+    ) -> np.ndarray:
+        """
+        Get all consecutive sentence similarities across chunks.
+        Used for sliding window change point detection.
+        """
+        all_sentences = []
+        for chunk in chunks:
+            sentences = chunk.get("sentences", [])
+            all_sentences.extend(sentences)
+        
+        if len(all_sentences) < 2:
+            return np.array([])
+        
+        try:
+            embeddings = self.embedding_model.encode(
+                all_sentences, 
+                show_progress_bar=False
+            )
+            
+            similarities = []
+            for i in range(len(embeddings) - 1):
+                sim = self._cosine_similarity(embeddings[i], embeddings[i + 1])
+                similarities.append(sim)
+            
+            return np.array(similarities)
+        except Exception:
+            return np.array([])
+    
+    def _calculate_per_chunk_scores(
+        self, 
+        chunks: List[Dict[str, Any]],
+        chunk_embeddings: np.ndarray
+    ) -> List[Dict[str, float]]:
+        """Calculate detailed scores for each chunk."""
+        scores = []
+        
+        for i, chunk in enumerate(chunks):
+            chunk_score = {
+                "chunk_index": i,
+                "length": len(chunk.get("text", chunk.get("content", ""))),
+                "sentence_count": len(chunk.get("sentences", [])),
+                "boundary_score": chunk.get("boundary_score", 1.0),
+            }
+            
+            # Similarity to neighbors
+            if i > 0:
+                chunk_score["similarity_to_prev"] = float(
+                    self._cosine_similarity(
+                        chunk_embeddings[i], 
+                        chunk_embeddings[i - 1]
+                    )
+                )
+            if i < len(chunks) - 1:
+                chunk_score["similarity_to_next"] = float(
+                    self._cosine_similarity(
+                        chunk_embeddings[i], 
+                        chunk_embeddings[i + 1]
+                    )
+                )
+            
+            scores.append(chunk_score)
+        
+        return scores
+    
+    def detect_change_points(
+        self, 
+        sentences: List[str]
+    ) -> List[Dict[str, Any]]:
+        """
+        Detect semantic change points using sliding window (W=3).
+        
+        Triggers boundary where: Similarity < μ - (k × σ)
+        
+        Args:
+            sentences: List of sentences to analyze
+            
+        Returns:
+            List of detected change points with metadata
+        """
+        if len(sentences) < self.window_size + 1:
+            return []
+        
+        embeddings = self.embedding_model.encode(
+            sentences, 
+            show_progress_bar=False
+        )
+        
+        # Calculate all consecutive similarities
+        similarities = []
+        for i in range(len(embeddings) - 1):
+            sim = self._cosine_similarity(embeddings[i], embeddings[i + 1])
+            similarities.append(sim)
+        
+        similarities = np.array(similarities)
+        
+        # Sliding window statistics
+        change_points = []
+        half_window = self.window_size // 2
+        
+        for i in range(half_window, len(similarities) - half_window):
+            # Get window around current position
+            window_start = max(0, i - half_window)
+            window_end = min(len(similarities), i + half_window + 1)
+            window = similarities[window_start:window_end]
+            
+            # Calculate local statistics
+            local_mean = np.mean(window)
+            local_std = np.std(window)
+            
+            # Check threshold: Similarity < μ - (k × σ)
+            threshold = local_mean - (self.k_threshold * local_std)
+            
+            if similarities[i] < threshold:
+                change_points.append({
+                    "position": i + 1,  # After this sentence
+                    "similarity": float(similarities[i]),
+                    "threshold": float(threshold),
+                    "local_mean": float(local_mean),
+                    "local_std": float(local_std),
+                    "confidence": float((threshold - similarities[i]) / (local_std + 1e-8))
+                })
+        
+        return change_points
+    
+    @staticmethod
+    def _cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:
+        """Calculate cosine similarity between two vectors."""
+        norm1 = np.linalg.norm(vec1)
+        norm2 = np.linalg.norm(vec2)
+        if norm1 == 0 or norm2 == 0:
+            return 0.0
+        return float(np.dot(vec1, vec2) / (norm1 * norm2))
+
+
+# ============================================================================
 # Semantic Chunker
 # ============================================================================
 

@@ -10,6 +10,7 @@ An advanced **Retrieval-Augmented Generation (RAG)** system for precision agricu
 | **Embeddings** | all-MiniLM-L6-v2 (384 dims) |
 | **Vector Store** | ChromaDB |
 | **Graph** | NetworkX |
+| **API** | FastAPI with Swagger |
 | **Hardware** | i5-10300H, 16GB RAM, GTX 1650 (4GB VRAM) |
 
 ## Key Features
@@ -31,6 +32,12 @@ An advanced **Retrieval-Augmented Generation (RAG)** system for precision agricu
 - **BFS Traversal** - Multi-hop relational reasoning
 - **PageRank Scoring** - Entity importance ranking
 - **Shortest Path** - Relationship discovery between concepts
+
+### REST API
+- **FastAPI Server** - Production-ready REST endpoints
+- **Swagger UI** - Interactive API documentation at `/docs`
+- **Streaming** - Server-Sent Events for real-time responses
+- **Evaluation Endpoint** - LLM-as-Judge via API
 
 ### Evaluation Framework
 - **RAG Triad** - Faithfulness, Answer Relevancy, Context Relevancy
@@ -63,6 +70,9 @@ python3 -m venv rag_env
 source rag_env/bin/activate
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
+
+# Optional: Copy environment config
+cp .env.example .env
 ```
 
 ### Usage
@@ -80,6 +90,27 @@ python src/main.py
 python src/main.py --query "Best practices for drip irrigation?"
 ```
 
+### REST API Server
+
+```bash
+# Start API server (Swagger at http://localhost:8000/docs)
+./start_api.sh
+
+# Or with custom port
+./start_api.sh 8080
+```
+
+**API Endpoints:**
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/info` | GET | System info |
+| `/query` | POST | Query RAG system |
+| `/query/stream` | POST | Streaming response (SSE) |
+| `/evaluate` | POST | LLM-as-Judge evaluation |
+| `/docs` | GET | Swagger UI |
+| `/redoc` | GET | ReDoc documentation |
+
 ### Chat Commands
 
 | Command | Description |
@@ -93,10 +124,34 @@ python src/main.py --query "Best practices for drip irrigation?"
 
 ---
 
+## Environment Configuration
+
+Copy `.env.example` to `.env` and customize:
+
+```bash
+# LLM Configuration
+LLM_MODEL=llama3.2:3b
+LLM_BASE_URL=http://localhost:11434
+LLM_TEMPERATURE=0.3
+
+# Embedding Configuration
+EMBEDDING_MODEL=all-MiniLM-L6-v2
+EMBEDDING_DEVICE=cuda
+
+# Performance
+ENABLE_CACHING=true
+```
+
+---
+
 ## Architecture
 
 ```
 src/
++-- adapters/                # Entry Points
+|   +-- api/                 # FastAPI REST server
+|   +-- cli/                 # Command-line interface
+|
 +-- core/                    # Domain Layer
 |   +-- entities/            # SemanticChunk, QueryType, AgenticMetrics
 |   +-- interfaces/          # RetrieverProtocol, LLMProtocol
@@ -105,6 +160,9 @@ src/
 +-- application/             # Use Cases
 |   +-- agents/              # RAGAgent, RAGOrchestrator
 |   +-- evaluation/          # LLM-as-Judge, PPI Calibration
+|
++-- infrastructure/          # Shared Resources
+|   +-- shared.py            # Singleton registries, caching
 |
 +-- document_processing/     # Chunking
 |   +-- semantic_chunker.py  # Proposition-based semantic splitting
@@ -118,7 +176,6 @@ src/
 |   +-- query_router.py      # Intent classification
 |   +-- query_enhancer.py    # Multi-query expansion
 |   +-- reranker.py          # Cross-encoder
-|   +-- rag_agent.py         # GA-RAG implementation
 |
 +-- knowledge_graph/         # Graph operations
 |   +-- graph_builder.py     # Entity/relationship extraction
@@ -129,7 +186,7 @@ src/
 |   +-- memory_manager.py    # Conversation history
 |
 +-- config/                  # Configuration
-    +-- config.py            # All settings
+    +-- config.py            # All settings (supports .env)
 ```
 
 ---
@@ -148,62 +205,9 @@ src/
 
 ---
 
-## Configuration
-
-Key settings in `src/config/config.py`:
-
-```python
-# LLM
-LLM_CONFIG = {
-    "model": "llama3.2:3b",
-    "temperature": 0.3,
-    "num_ctx": 4096,
-}
-
-# Retrieval
-RETRIEVAL_CONFIG = {
-    "hybrid_search": {"semantic_weight": 0.7, "keyword_weight": 0.3},
-    "reranking": {"top_k_initial": 20, "top_k_final": 5},
-}
-
-# Chunking
-CHUNK_CONFIG = {
-    "chunk_size": 600,
-    "chunk_overlap_percent": 0.15,
-    "breakpoint_threshold_percentile": 95,
-}
-```
-
----
-
-## Evaluation
-
-### Run Evaluation
-```bash
-python tests/evaluate_rag.py --num 10
-```
-
-### Metrics
-- **Faithfulness**: Claims grounded in context (0-1)
-- **Answer Relevancy**: Response addresses query (0-1)
-- **Context Relevancy**: Retrieved docs are relevant (0-1)
-- **Agricultural Accuracy**: Domain correctness (0-1)
-- **Step Efficiency**: shortest_path / actual_hops (0-1)
-
-### PPI Calibration
-Calibrate LLM-as-Judge against human baseline:
-```python
-from src.application.evaluation import AgenticEvaluator
-
-evaluator = AgenticEvaluator()
-evaluator.calibrate_with_baseline(human_scores, llm_scores)
-```
-
----
-
 ## API Usage
 
-### Basic Query
+### Python SDK
 ```python
 from src.main import PrecisionAgricultureRAG
 
@@ -212,7 +216,20 @@ result = rag.query("How does drip irrigation affect water efficiency?")
 print(result["answer"])
 ```
 
-### Agentic Query
+### REST API
+```bash
+# Query via API
+curl -X POST http://localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is drip irrigation?", "top_k": 5}'
+
+# Agentic query
+curl -X POST http://localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Compare irrigation methods", "use_agent": true}'
+```
+
+### Agentic Query (Python)
 ```python
 from src.application.agents import RAGAgent
 
@@ -226,16 +243,19 @@ print(f"Tools: {result.tools_used}")
 print(f"Hops: {result.hops_taken}")
 ```
 
-### Chunking Evaluation
-```python
-from src.document_processing.semantic_chunker import SemanticChunker, ChunkingEvaluator
+---
 
-chunker = SemanticChunker()
-evaluator = ChunkingEvaluator(embedding_model=chunker.embedding_model)
+## Testing
 
-chunks = chunker.process_document("path/to/doc.pdf")
-metrics = evaluator.evaluate_chunks(chunks)
-print(metrics.summary())
+```bash
+# Run unit tests
+pytest tests/test_core.py -v
+
+# Run with coverage
+pytest tests/ -v --cov=src
+
+# Run evaluation
+python tests/evaluate_rag.py --num 10
 ```
 
 ---

@@ -1,10 +1,20 @@
 """
 Configuration for Advanced RAG System
 Optimized for: i5-10300H, 16GB RAM, GTX 1650 (4GB VRAM)
+
+Supports environment variables via .env file.
 """
+import os
 from pathlib import Path
 import torch
 import logging
+
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).parent.parent.parent / ".env")
+except ImportError:
+    pass  # dotenv not installed, use defaults
 
 # ========== PATHS ==========
 BASE_DIR = Path(__file__).parent.parent.parent
@@ -21,13 +31,20 @@ for dir_path in [VECTOR_STORE_DIR, KNOWLEDGE_GRAPH_DIR, CHUNKS_DIR, METADATA_DIR
     dir_path.mkdir(parents=True, exist_ok=True)
 
 # ========== DEVICE CONFIGURATION ==========
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+_device_env = os.getenv("EMBEDDING_DEVICE", "").lower()
+if _device_env == "cuda" and torch.cuda.is_available():
+    DEVICE = "cuda"
+elif _device_env == "cpu":
+    DEVICE = "cpu"
+else:
+    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # ========== LLM CONFIGURATION ==========
 LLM_CONFIG = {
-    "model": "llama3.2:3b",  # Upgraded from qwen:1.8b for better generation quality
-    "base_url": "http://localhost:11434",
-    "temperature": 0.3,  # Slightly higher for more creative responses
+    "model": os.getenv("LLM_MODEL", "llama3.2:3b"),
+    "base_url": os.getenv("LLM_BASE_URL", "http://localhost:11434"),
+    "temperature": float(os.getenv("LLM_TEMPERATURE", "0.3")),
+
     "top_p": 0.9,
     "top_k": 40,
     "num_ctx": 4096,  # Context window

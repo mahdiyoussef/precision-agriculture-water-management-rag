@@ -11,7 +11,7 @@ from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Any, Optional, Tuple
 import numpy as np
 
-from ..config.config import LLM_CONFIG, logger
+from src.config.config import LLM_CONFIG, logger
 
 try:
     import openai

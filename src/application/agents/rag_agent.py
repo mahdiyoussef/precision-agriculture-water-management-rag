@@ -13,7 +13,7 @@ from enum import Enum
 from typing import List, Dict, Any, Optional, Tuple, Set
 import re
 
-from ..config.config import LLM_CONFIG, logger
+from src.config.config import LLM_CONFIG, logger
 
 try:
     import openai

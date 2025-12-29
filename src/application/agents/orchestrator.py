@@ -11,8 +11,8 @@ from enum import Enum
 
 from langchain_community.llms import Ollama
 
-from ..config.config import LLM_CONFIG, SYSTEM_PROMPT, logger
-from ..retrieval.query_router import QueryRouter, QueryIntent
+from src.config.config import LLM_CONFIG, SYSTEM_PROMPT, logger
+from src.retrieval.query_router import QueryRouter, QueryIntent
 
 
 class ToolType(Enum):

@@ -16,7 +16,7 @@ from abc import ABC, abstractmethod
 
 from langchain_community.llms import Ollama
 
-from ..config.config import LLM_CONFIG, logger
+from src.config.config import LLM_CONFIG, logger
 
 
 # ============================================================================

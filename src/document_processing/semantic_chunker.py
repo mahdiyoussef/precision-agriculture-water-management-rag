@@ -802,6 +802,38 @@ class SemanticChunker:
         
         return content
     
+    def extract_from_markdown(self, md_path: Path) -> Dict[str, Any]:
+        """Extract text with structure from Markdown file."""
+        content = {
+            "filename": md_path.name,
+            "pages": [],
+            "headers": [],
+            "tables": [],
+            "full_text": ""
+        }
+        
+        try:
+            with open(md_path, 'r', encoding='utf-8') as f:
+                text = f.read()
+            
+            content["full_text"] = text
+            
+            # Treat entire MD file as one page
+            content["pages"].append({
+                "page_num": 1,
+                "text": text,
+                "tables": [],
+                "has_table": "|" in text and "---" in text  # Simple table detection
+            })
+            
+            # Extract headers from markdown
+            content["headers"] = self._extract_headers(text)
+            
+        except Exception as e:
+            logger.error(f"Failed to extract from {md_path}: {e}")
+        
+        return content
+    
     def _table_to_text(self, table: List[List[Any]]) -> str:
         """Convert table to structured text."""
         rows = []
@@ -1367,20 +1399,27 @@ class SemanticChunker:
     # Main Processing Pipeline
     # ============================================================================
     
-    def process_document(self, pdf_path: Path) -> List[SemanticChunk]:
+    def process_document(self, doc_path: Path) -> List[SemanticChunk]:
         """
         Process a single document into semantic chunks (v2.0 pipeline).
+        Supports PDF and Markdown (.md) files.
         Step 1: Propositional split
         Step 2: Semantic clustering  
         Step 3: Contextual anchoring (Global Context Header)
         """
-        logger.info(f"Processing: {pdf_path.name}")
+        logger.info(f"Processing: {doc_path.name}")
         
-        # Extract content
-        doc_content = self.extract_from_pdf(pdf_path)
+        # Extract content based on file type
+        if doc_path.suffix.lower() == '.pdf':
+            doc_content = self.extract_from_pdf(doc_path)
+        elif doc_path.suffix.lower() == '.md':
+            doc_content = self.extract_from_markdown(doc_path)
+        else:
+            logger.warning(f"Unsupported file type: {doc_path.suffix}")
+            return []
         
         if not doc_content["full_text"].strip():
-            logger.warning(f"No content extracted from {pdf_path.name}")
+            logger.warning(f"No content extracted from {doc_path.name}")
             return []
         
         # Clean text
@@ -1424,7 +1463,7 @@ class SemanticChunker:
             
             # Step 3: Build Global Context Header (v2.0 context_summary)
             context_summary = self._build_global_context_header(
-                pdf_path.name, header_path, chunk_text, entities, morocco_meta
+                doc_path.name, header_path, chunk_text, entities, morocco_meta
             )
             
             chunk = SemanticChunk(
@@ -1434,8 +1473,8 @@ class SemanticChunker:
                 intent_category=intent_category,  # v2.0 field
                 semantic_keywords=semantic_keywords,  # v2.0 field
                 metadata={
-                    "source": pdf_path.name,
-                    "category": pdf_path.parent.name,
+                    "source": doc_path.name,
+                    "category": doc_path.parent.name,
                     "chunk_index": i,
                     "char_count": len(chunk_text),
                     "word_count": len(chunk_text.split()),
@@ -1443,7 +1482,7 @@ class SemanticChunker:
                     "has_metrics": len(entities["metrics"]) > 0,
                     "has_table": any(p.get("has_table", False) for p in doc_content["pages"]),
                 },
-                source_file=pdf_path.name,
+                source_file=doc_path.name,
                 page_numbers=page_nums,
                 header_path=header_path,
                 propositions=propositions,
@@ -1457,7 +1496,7 @@ class SemanticChunker:
             
             # Feature 1: Apply contextual header
             if CONTEXTUAL_HEADER_CONFIG["enabled"]:
-                chunk = self.apply_contextual_header(chunk, pdf_path.name)
+                chunk = self.apply_contextual_header(chunk, doc_path.name)
             
             chunks.append(chunk)
         
@@ -1475,7 +1514,7 @@ class SemanticChunker:
             if chunks and all_sentence_indices:
                 chunks[0].metadata["total_sentences"] = len(all_sentence_indices)
         
-        logger.info(f"  Created {len(chunks)} semantic chunks from {pdf_path.name}")
+        logger.info(f"  Created {len(chunks)} semantic chunks from {doc_path.name}")
         return chunks
     
     def _get_page_numbers(self, chunk_text: str, pages: List[Dict]) -> List[int]:
@@ -1562,14 +1601,23 @@ class SemanticChunker:
         documents_dir: Path = DOCUMENTS_DIR,
         save_output: bool = True
     ) -> List[SemanticChunk]:
-        """Process all PDFs in directory."""
+        """Process all PDFs and Markdown files in directory."""
         all_chunks = []
         
+        # Find PDF files
         pdf_files = list(documents_dir.rglob("*.pdf"))
         logger.info(f"Found {len(pdf_files)} PDF files")
         
-        for pdf_path in tqdm(pdf_files, desc="Semantic Chunking"):
-            chunks = self.process_document(pdf_path)
+        # Find Markdown files
+        md_files = list(documents_dir.rglob("*.md"))
+        logger.info(f"Found {len(md_files)} Markdown files")
+        
+        # Combine all document files
+        all_files = pdf_files + md_files
+        logger.info(f"Total documents to process: {len(all_files)}")
+        
+        for doc_path in tqdm(all_files, desc="Semantic Chunking"):
+            chunks = self.process_document(doc_path)
             all_chunks.extend(chunks)
         
         logger.info(f"Total semantic chunks: {len(all_chunks)}")

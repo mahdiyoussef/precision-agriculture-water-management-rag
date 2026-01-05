@@ -55,7 +55,7 @@ LLM_CONFIG = {
 
 # ========== EMBEDDING CONFIGURATION ==========
 EMBEDDING_CONFIG = {
-    "model_name": "all-MiniLM-L6-v2",  # Fast, 384 dimensions
+    "model_name": "distiluse-base-multilingual-cased-v2",  # Multilingual, 512 dim, 50+ languages (EN, FR, AR), smaller download
     "device": DEVICE,
     "batch_size": 32,  # Optimize for 4GB VRAM
     "normalize_embeddings": True,
@@ -87,7 +87,7 @@ VECTOR_STORE_CONFIG = {
     "collection_name": "water_management_docs",
     "distance_metric": "cosine",
     "persist_directory": str(VECTOR_STORE_DIR),
-    "embedding_dimension": 384,  # Match all-MiniLM-L6-v2
+    "embedding_dimension": 512,  # Match distiluse-base-multilingual-cased-v2
 }
 
 # ========== RETRIEVAL CONFIGURATION ==========
@@ -234,6 +234,29 @@ DOMAIN_SYNONYMS = {
     "deficit irrigation": ["regulated deficit irrigation", "RDI", "controlled water stress"],
     "crop water requirement": ["CWR", "water demand", "irrigation requirement"],
 }
+
+# ========== WEATHER CONFIGURATION ==========
+WEATHER_CONFIG = {
+    "enabled": True,
+    "api_provider": os.getenv("WEATHER_API_PROVIDER", "open-meteo"),
+    "api_key": os.getenv("WEATHER_API_KEY", ""),  # Only for OpenWeatherMap
+    "cache_ttl": int(os.getenv("WEATHER_CACHE_TTL", "1800")),  # 30 minutes
+    "default_forecast_days": 7,
+    "timeout": 10,  # seconds
+    "relevance_threshold": 0.4,  # Lowered to catch more weather-relevant queries
+}
+
+# Keywords that trigger weather context enrichment
+WEATHER_KEYWORDS = [
+    "irrigation", "irrigate", "watering", "water schedule",
+    "frost", "freeze", "cold", "heat", "temperature",
+    "drought", "rain", "precipitation", "weather",
+    "planting time", "sowing", "harvest", "season",
+    "evapotranspiration", "ET0", "humidity", "crop stress",
+    "soil moisture", "spray timing", "fertilizer timing",
+    "when to water", "should I irrigate", "best time to plant"
+]
+
 
 def setup_logging():
     """Configure logging based on settings."""

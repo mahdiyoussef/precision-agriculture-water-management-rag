@@ -11,8 +11,10 @@ from enum import Enum
 
 from langchain_community.llms import Ollama
 
-from ..config.config import LLM_CONFIG, SYSTEM_PROMPT, logger
+from ..config.config import LLM_CONFIG, SYSTEM_PROMPT, WEATHER_CONFIG, logger
 from ..retrieval.query_router import QueryRouter, QueryIntent
+from ..agents.weather_agent import WeatherAgent, WeatherContext
+from ..infrastructure.weather_service import get_weather_service
 
 
 class ToolType(Enum):
@@ -21,6 +23,7 @@ class ToolType(Enum):
     GRAPH_SEARCH = "graph_search"
     KEYWORD_SEARCH = "keyword_search"
     DOCUMENT_SUMMARY = "get_document_summary"
+    WEATHER_LOOKUP = "weather_lookup"  # Weather context for agriculture
 
 
 @dataclass
@@ -132,6 +135,18 @@ ACTION: [tool_name](param1, param2)
         self.max_iterations = max_iterations
         self.query_router = QueryRouter()
         
+        # Initialize Weather Agent for agriculture queries
+        self.weather_agent = None
+        if WEATHER_CONFIG.get("enabled", True):
+            try:
+                self.weather_agent = WeatherAgent(
+                    weather_service=get_weather_service(),
+                    relevance_threshold=WEATHER_CONFIG.get("relevance_threshold", 0.5)
+                )
+                logger.info("WeatherAgent initialized for orchestrator")
+            except Exception as e:
+                logger.warning(f"Failed to initialize WeatherAgent: {e}")
+        
         # Initialize LLM for reasoning
         self.llm = Ollama(
             model=LLM_CONFIG["model"],
@@ -142,6 +157,33 @@ ACTION: [tool_name](param1, param2)
         )
         
         logger.info("RAGOrchestrator initialized with ReAct loop")
+    
+    # =========================================================================
+    # USER LOCATION MANAGEMENT
+    # =========================================================================
+    
+    def set_user_location(self, location: str):
+        """Set the user's location for weather queries."""
+        if self.weather_agent:
+            self.weather_agent.set_user_location(location)
+            logger.info(f"User location set to: {location}")
+    
+    def get_user_location(self) -> Optional[str]:
+        """Get the current user location."""
+        if self.weather_agent:
+            return self.weather_agent.get_user_location()
+        return None
+    
+    def needs_user_location(self, query: str) -> bool:
+        """
+        Check if a query needs weather context but location is unknown.
+        Returns True if we should ask the user for their location.
+        """
+        if not self.weather_agent:
+            return False
+        
+        weather_ctx = self.weather_agent.get_weather_context(query)
+        return weather_ctx.is_relevant and weather_ctx.needs_location
     
     # =========================================================================
     # RETRIEVAL TOOLS
@@ -252,6 +294,35 @@ ACTION: [tool_name](param1, param2)
         
         return f"Document {doc_id} not found."
     
+    def weather_lookup(self, query: str, location: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Fetch weather context for agriculture queries.
+        Best for: Irrigation scheduling, planting decisions, crop stress analysis.
+        
+        Args:
+            query: The user query for context
+            location: Optional location override
+            
+        Returns:
+            Dict with weather context and formatted string
+        """
+        if not self.weather_agent:
+            logger.warning("Weather agent not available")
+            return {"error": "Weather agent not initialized", "context": ""}
+        
+        logger.info(f"TOOL: weather_lookup(location='{location or 'from cache'}')")
+        
+        weather_ctx = self.weather_agent.get_weather_context(query, location)
+        
+        return {
+            "is_relevant": weather_ctx.is_relevant,
+            "location": weather_ctx.location,
+            "needs_location": weather_ctx.needs_location,
+            "context": weather_ctx.formatted_context,
+            "reasons": weather_ctx.relevance_reasons,
+            "tool": "weather_lookup",
+        }
+    
     # =========================================================================
     # REACT REASONING LOOP
     # =========================================================================
@@ -283,6 +354,8 @@ ACTION: [tool_name](param1, param2)
             return self.keyword_search(**params)
         elif tool == ToolType.DOCUMENT_SUMMARY:
             return self.get_document_summary(**params)
+        elif tool == ToolType.WEATHER_LOOKUP:
+            return self.weather_lookup(**params)
         else:
             logger.warning(f"Unknown tool: {tool}")
             return []
